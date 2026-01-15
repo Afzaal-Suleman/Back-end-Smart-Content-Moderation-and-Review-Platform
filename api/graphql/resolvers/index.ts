@@ -15,6 +15,7 @@ const resolvers = {
   },
 
   Query: {
+    hello: () => "Hello World from GraphQL!",
     ...contentResolvers.Query,
   },
 };

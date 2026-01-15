@@ -11,7 +11,7 @@ const resolvers = {
     // other mutations...
   },
   ContentItem: {
-    ...contentResolvers.ContentItem,
+    // ...contentResolvers.ContentItem,
   },
 
   Query: {

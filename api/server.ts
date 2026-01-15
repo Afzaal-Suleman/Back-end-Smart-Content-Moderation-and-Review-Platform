@@ -1,71 +1,101 @@
 import { ApolloServer } from '@apollo/server';
-import { typeDefs } from './graphql/schema';
-import resolvers from './graphql/resolvers';
 import jwt from 'jsonwebtoken';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import dotenv from 'dotenv';
+import { typeDefs } from './graphql/schema';
+import resolvers from './graphql/resolvers';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';
 
-let server: ApolloServer | null = null;
-let sequelize: any = null;
+// Minimal Hello World GraphQL schema
+// const typeDefs = gql`
+//   type Query {
+//     hello: String
+//   }
+// `;
 
-async function getServer() {
-  if (!server) {
-    server = new ApolloServer({
-      typeDefs,
-      resolvers,
-      introspection: true,
-      csrfPrevention: false,
-    });
-  }
-  return server;
-}
+// const resolvers = {
+//   Query: {
+//     hello: () => "Hello World from GraphQL!",
+//   },
+// };
 
-async function getSequelize() {
-  if (!sequelize) {
-    const { Sequelize } = await import('sequelize');
-    sequelize = new Sequelize(process.env.DATABASE_URL || '', {
-      dialect: 'postgres',
-      logging: false,
-    });
-    await sequelize.authenticate();
-    console.log('✅ DB connected');
-  }
-  return sequelize;
-}
+// Apollo Server instance (safe, no DB yet)
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  introspection: true,
+  csrfPrevention: false,
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
- const allowedOrigin = process.env.FRONTEND_URL || '*';
-res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3001');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  // Lazy DB connection (if needed)
+  let sequelize: any = null;
+  try {
+    const { Sequelize } = await import('sequelize');
+    sequelize = new Sequelize( 
+            process.env.DATABASE_URL || '',
+    
+      {
+        host: process.env.DB_HOST || 'localhost',
+        dialect: 'postgres',
+        logging: false,
+        pool: { max: 5, min: 0, idle: 10000 },
+      }
+    );
+    await sequelize.authenticate();
+    await sequelize.sync();
+    console.log(' DB connected');
+  } catch (err: any) {
+    console.warn(' DB connection failed:', err.message);
+    // continue, do NOT crash
+  }
 
   const { query, variables } = req.body;
-  if (!query) return res.status(400).json({ error: 'Query is required' });
 
+  if (!query) {
+    return res.status(400).json({
+      kind: 'single',
+      singleResult: {
+        errors: [
+          {
+            message: 'GraphQL operations must contain a non-empty `query` or a `persistedQuery` extension.',
+            code: 'BAD_REQUEST',
+          },
+        ],
+      },
+    });
+  }
+
+  // Decode JWT
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace('Bearer ', '').trim();
-
-  const sequelize = await getSequelize();
   let user = null;
 
-  if (token) {
+  if (token && sequelize) {
     try {
       const decoded: any = jwt.verify(token, JWT_SECRET);
-      const User = (await import('./models/User')).default;
-      user = await User.findByPk(decoded.id);
+      // Lazy import model
+      const UserModule = await import('./models/User');
+      const User = UserModule.default;
+      user = await User.findByPk(decoded.id).catch(() => null);
     } catch {
-      console.log('⚠️ Invalid or expired token');
+      console.log('Invalid or expired token');
     }
   }
 
-  const serverInstance = await getServer();
   try {
-    const result = await serverInstance.executeOperation(
+    const result = await server.executeOperation(
       { query, variables },
       { contextValue: { user, token, sequelize } }
     );

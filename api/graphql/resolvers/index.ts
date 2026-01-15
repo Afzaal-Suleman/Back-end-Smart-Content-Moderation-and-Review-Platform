@@ -4,10 +4,10 @@ import { contentResolvers } from "./content";
 import { checkAuth } from "./checkAuth";
 const resolvers = {
   Mutation: {
-    signUp,
-    logIn,
-    checkAuth,
-    ...contentResolvers.Mutation,
+    // signUp,
+    // logIn,
+    // checkAuth,
+    // ...contentResolvers.Mutation,
     // other mutations...
   },
   ContentItem: {
@@ -16,7 +16,7 @@ const resolvers = {
 
   Query: {
     hello: () => "Hello World from GraphQL!",
-    ...contentResolvers.Query,
+    // ...contentResolvers.Query,
   },
 };
 

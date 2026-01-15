@@ -1,29 +1,29 @@
 import ContentItem from "../../models/content";
 import User from "../../models/User";
-import {hateWords, offensiveWords, violenceWords, sexualWords, spamWords} from "../../utils/listOfWords"
+import { hateWords, offensiveWords, violenceWords, sexualWords, spamWords } from "../../utils/listOfWords"
 type ContentStatus = "pending" | "approved" | "rejected" | "needs_review" | "publish" | "draft";
 
 function automatedTextReview(text: any) {
-  const bannedWords = [
-    ...spamWords,
-    ...hateWords,
-    ...offensiveWords,
-    ...sexualWords,
-    ...violenceWords
-  ];
+    const bannedWords = [
+        ...spamWords,
+        ...hateWords,
+        ...offensiveWords,
+        ...sexualWords,
+        ...violenceWords
+    ];
 
-  let count = 0;
-  const lowerText = text.toLowerCase();
+    let count = 0;
+    const lowerText = text.toLowerCase();
 
-  for (let word of bannedWords) {
-    if (lowerText.includes(word)) {
-      count++;
+    for (let word of bannedWords) {
+        if (lowerText.includes(word)) {
+            count++;
+        }
     }
-  }
 
-  if (count === 0) return "approved";
-  if (count === 1) return "needs_review";
-  return "rejected"; 
+    if (count === 0) return "approved";
+    if (count === 1) return "needs_review";
+    return "rejected";
 }
 
 
@@ -51,13 +51,25 @@ export const contentResolvers = {
         },
         // Get single content item by ID
         content: async (_: any, { id }: { id: number }) => {
-            return ContentItem.findByPk(id, {
-                include: [
-                    { model: User, as: "submitter" },
-                    { model: User, as: "moderator" },
-                ],
-            });
+            try {
+                const content = await ContentItem.findByPk(id, {
+                    include: [
+                        { model: User, as: "submitter" },
+                        { model: User, as: "moderator" },
+                    ],
+                });
+
+                if (!content) {
+                    throw new Error(`ContentItem with id ${id} not found`);
+                }
+
+                return content;
+            } catch (err: any) {
+                console.error("Error fetching content:", err.message);
+                throw new Error(`Failed to fetch content: ${err.message}`);
+            }
         },
+
         contentByUser: async (_: any, __: any, context: any) => {
             // Get logged-in user's ID from context
             const userId = context.user?.id;
@@ -91,7 +103,7 @@ export const contentResolvers = {
 
     Mutation: {
         submitContent: async (_: any, { input }: { input: any }, context: any) => {
-            
+
             const userId = context.user?.id;
             if (!userId) throw new Error("Authentication required");
 
@@ -111,7 +123,7 @@ export const contentResolvers = {
             const automated = await automatedTextReview(description + " " + title)
 
             console.log(automated);
-            
+
 
             const content = await ContentItem.create({
                 title,
@@ -141,7 +153,7 @@ export const contentResolvers = {
             const content = await ContentItem.findByPk(contentId);
             if (!content) throw new Error("Content not found");
 
-            const currentStatus:string = content.status;
+            const currentStatus: string = content.status;
             const isOwner = content.submittedBy === userId;
 
             // Creator cannot change after submission

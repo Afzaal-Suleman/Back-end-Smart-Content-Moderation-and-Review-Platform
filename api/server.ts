@@ -3,23 +3,24 @@ import { gql } from 'graphql-tag';
 import jwt from 'jsonwebtoken';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import dotenv from 'dotenv';
-
+import { typeDefs } from './graphql/schema';
+import resolvers from './graphql/resolvers';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';
 
 // Minimal Hello World GraphQL schema
-const typeDefs = gql`
-  type Query {
-    hello: String
-  }
-`;
+// const typeDefs = gql`
+//   type Query {
+//     hello: String
+//   }
+// `;
 
-const resolvers = {
-  Query: {
-    hello: () => "Hello World from GraphQL!",
-  },
-};
+// const resolvers = {
+//   Query: {
+//     hello: () => "Hello World from GraphQL!",
+//   },
+// };
 
 // Apollo Server instance (safe, no DB yet)
 const server = new ApolloServer({

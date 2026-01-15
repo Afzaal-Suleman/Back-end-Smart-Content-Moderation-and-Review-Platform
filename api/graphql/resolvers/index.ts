@@ -1,7 +1,7 @@
-import { signUp } from "./signup";
-import { logIn } from "./login";
-import { contentResolvers } from "./content";
-import { checkAuth } from "./checkAuth";
+import { signUp } from "./signup.js";
+import { logIn } from "./login.js";
+import { contentResolvers } from "./content.js";
+import { checkAuth } from "./checkAuth.js";
 const resolvers = {
   Mutation: {
     signUp,

@@ -1,6 +1,6 @@
-import ContentItem from "../../models/content";
-import User from "../../models/User";
-import { hateWords, offensiveWords, violenceWords, sexualWords, spamWords } from "../../utils/listOfWords"
+import ContentItem from "../../models/content.js";
+import User from "../../models/User.js";
+import { hateWords, offensiveWords, violenceWords, sexualWords, spamWords } from "../../utils/listOfWords.js"
 type ContentStatus = "pending" | "approved" | "rejected" | "needs_review" | "publish" | "draft";
 
 function automatedTextReview(text: any) {

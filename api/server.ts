@@ -2,8 +2,8 @@ import { ApolloServer } from '@apollo/server';
 import jwt from 'jsonwebtoken';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import dotenv from 'dotenv';
-import { typeDefs } from './graphql/schema';
-import resolvers from './graphql/resolvers';
+import { typeDefs } from './graphql/schema.js';
+import resolvers from './graphql/resolvers/index.js';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';

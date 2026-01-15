@@ -10,9 +10,9 @@ const resolvers = {
     // ...contentResolvers.Mutation,
     // other mutations...
   },
-  ContentItem: {
-    // ...contentResolvers.ContentItem,
-  },
+  // ContentItem: {
+  //   // ...contentResolvers.ContentItem,
+  // },
 
   Query: {
     hello: () => "Hello World from GraphQL!",

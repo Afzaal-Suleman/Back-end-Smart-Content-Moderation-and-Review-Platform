@@ -1,12 +1,12 @@
 import { gql } from "graphql-tag";
 
 export const typeDefs = gql` 
-
-   type Query {
-    hello: String
-  }
+  
   type Query {
     users: [User!]!
+  }
+     type Query {
+    hello: String
   }
   input SignUpInput {
   username: String!

@@ -1,16 +1,14 @@
-import { ApolloServer } from '@apollo/server';
-import jwt from 'jsonwebtoken';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import dotenv from 'dotenv';
-import { typeDefs } from './graphql/schema.js';
-import resolvers from './graphql/resolvers/index.js';
-import connectDB from './config/database.js'; // your Sequelize setup
+import { ApolloServer } from "@apollo/server";
+import jwt from "jsonwebtoken";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import dotenv from "dotenv";
+import { typeDefs } from "./graphql/schema.js";
+import resolvers from "./graphql/resolvers/index.js";
+import { sequelize } from "./config/database.js"; // use instance, not function
+
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';
-
-// Connect to DB immediately
-connectDB();
+const JWT_SECRET = process.env.JWT_SECRET || "your_secret_here";
 
 const server = new ApolloServer({
   typeDefs,
@@ -20,54 +18,52 @@ const server = new ApolloServer({
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Allow all CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   const { query, variables } = req.body;
 
   if (!query) {
     return res.status(400).json({
-      errors: [
-        {
-          message: 'GraphQL operations must contain a non-empty `query` or a `persistedQuery` extension.',
-          code: 'BAD_REQUEST',
-        },
-      ],
+      errors: [{ message: "No query provided", code: "BAD_REQUEST" }],
     });
   }
 
-  // Decode JWT (optional)
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '').trim();
+  // Lazy DB connection
+  try {
+    await sequelize.authenticate();
+    console.log("DB connected");
+  } catch (err: any) {
+    console.error("DB connection failed:", err.message);
+    return res.status(500).json({ error: "Database connection failed" });
+  }
+
+  // JWT
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.replace("Bearer ", "").trim();
   let user = null;
 
   if (token) {
     try {
       const decoded: any = jwt.verify(token, JWT_SECRET);
-      const UserModule = await import('./models/User.js');
-      const User = UserModule.default;
+      const { default: User } = await import("./models/User.js");
       user = await User.findByPk(decoded.id).catch(() => null);
     } catch {
-      console.log('Invalid or expired token');
+      console.log("Invalid or expired token");
     }
   }
 
   try {
     const result: any = await server.executeOperation(
       { query, variables },
-      { contextValue: { user, token } } // no need to pass sequelize here
+      { contextValue: { user, token, sequelize } }
     );
-
     res.status(200).json(result.body.singleResult);
   } catch (err: any) {
-    console.error('GraphQL execution error:', err.message);
+    console.error("GraphQL execution error:", err.message);
     res.status(500).json({ error: err.message });
   }
 }

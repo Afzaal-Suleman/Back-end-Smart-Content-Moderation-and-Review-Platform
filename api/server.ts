@@ -31,6 +31,8 @@ const server = new ApolloServer({
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3001');
+
   // Lazy DB connection (if needed)
   let sequelize: any = null;
   try {

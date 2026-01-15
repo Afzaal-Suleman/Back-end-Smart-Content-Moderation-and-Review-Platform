@@ -1,64 +1,55 @@
 import { ApolloServer } from '@apollo/server';
-import dotenv from 'dotenv';
-import { typeDefs } from './graphql/schema';
-import resolvers from './graphql/resolvers';
-import { Sequelize } from 'sequelize';
+import { gql } from 'graphql-tag';
 import jwt from 'jsonwebtoken';
-import User from './models/User';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';
 
-// Initialize Sequelize without connecting yet
-const sequelize = new Sequelize(
-  process.env.DB_NAME || 'mydb',
-  process.env.DB_USER || 'postgres',
-  process.env.DB_PASSWORD || 'admin',
-  {
-    host: process.env.DB_HOST || 'localhost',
-    dialect: 'postgres',
-    logging: false,
-    pool: { max: 5, min: 0, idle: 10000 },
+// Minimal Hello World GraphQL schema
+const typeDefs = gql`
+  type Query {
+    hello: String
   }
-);
+`;
 
-// Create Apollo Server
+const resolvers = {
+  Query: {
+    hello: () => "Hello World from GraphQL!",
+  },
+};
+
+// Apollo Server instance (safe, no DB yet)
 const server = new ApolloServer({
   typeDefs,
   resolvers,
   introspection: true,
   csrfPrevention: false,
-  formatError: (error) => ({
-    message: error.message,
-    code: error.extensions?.code || 'INTERNAL_SERVER_ERROR',
-  }),
 });
 
-// Serverless handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Attempt DB connection inside the handler
+  // Lazy DB connection (if needed)
+  let sequelize: any = null;
   try {
+    const { Sequelize } = await import('sequelize');
+    sequelize = new Sequelize(
+      process.env.DB_NAME || 'mydb',
+      process.env.DB_USER || 'postgres',
+      process.env.DB_PASSWORD || 'admin',
+      {
+        host: process.env.DB_HOST || 'localhost',
+        dialect: 'postgres',
+        logging: false,
+        pool: { max: 5, min: 0, idle: 10000 },
+      }
+    );
     await sequelize.authenticate();
-    console.log('DB connected');
+    console.log('✅ DB connected');
   } catch (err: any) {
-    console.warn('DB connection failed:', err.message);
-    // do NOT crash the serverless function
-  }
-
-  // Decode JWT
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '').trim();
-  let user = null;
-
-  if (token) {
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      user = await User.findByPk(decoded.id).catch(() => null);
-    } catch {
-      console.log('Invalid or expired token');
-    }
+    console.warn('⚠️ DB connection failed:', err.message);
+    // continue, do NOT crash
   }
 
   const { query, variables } = req.body;
@@ -69,13 +60,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       singleResult: {
         errors: [
           {
-            message:
-              'GraphQL operations must contain a non-empty `query` or a `persistedQuery` extension.',
+            message: 'GraphQL operations must contain a non-empty `query` or a `persistedQuery` extension.',
             code: 'BAD_REQUEST',
           },
         ],
       },
     });
+  }
+
+  // Decode JWT
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+  let user = null;
+
+  if (token && sequelize) {
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      // Lazy import model
+      const UserModule = await import('./models/User');
+      const User = UserModule.default;
+      user = await User.findByPk(decoded.id).catch(() => null);
+    } catch {
+      console.log('Invalid or expired token');
+    }
   }
 
   try {

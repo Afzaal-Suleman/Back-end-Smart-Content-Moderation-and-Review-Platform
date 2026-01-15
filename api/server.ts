@@ -4,7 +4,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import dotenv from "dotenv";
 import { typeDefs } from "./graphql/schema.js";
 import resolvers from "./graphql/resolvers/index.js";
-import { sequelize } from "./config/database.js"; // use instance, not function
+import { sequelize } from "./config/database.js";
+import User from "./models/User.js";
 
 dotenv.config();
 
@@ -17,22 +18,32 @@ const server = new ApolloServer({
   csrfPrevention: false,
 });
 
+// We must call start() before executeOperation
+let serverStarted = false;
+async function ensureStarted() {
+  if (!serverStarted) {
+    await server.start();
+    serverStarted = true;
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
 
   const { query, variables } = req.body;
 
   if (!query) {
-    return res.status(400).json({
-      errors: [{ message: "No query provided", code: "BAD_REQUEST" }],
-    });
+    return res.status(400).json({ errors: [{ message: "No GraphQL query provided" }] });
   }
 
-  // Lazy DB connection
+  // Try DB connection
   try {
     await sequelize.authenticate();
     console.log("DB connected");
@@ -41,29 +52,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Database connection failed" });
   }
 
-  // JWT
+  // Parse JWT
+  let user = null;
   const authHeader = req.headers.authorization || "";
   const token = authHeader.replace("Bearer ", "").trim();
-  let user = null;
 
   if (token) {
     try {
       const decoded: any = jwt.verify(token, JWT_SECRET);
-      const { default: User } = await import("./models/User.js");
       user = await User.findByPk(decoded.id).catch(() => null);
     } catch {
-      console.log("Invalid or expired token");
+      console.log("Invalid token");
     }
   }
 
   try {
+    await ensureStarted();
     const result: any = await server.executeOperation(
       { query, variables },
       { contextValue: { user, token, sequelize } }
     );
-    res.status(200).json(result.body.singleResult);
+
+    // Strip internal envelope
+    if (result.body && result.body.singleResult) {
+      res.status(200).json(result.body.singleResult);
+    } else {
+      res.status(200).json(result);
+    }
   } catch (err: any) {
-    console.error("GraphQL execution error:", err.message);
+    console.error("Execution error:", err.message);
     res.status(500).json({ error: err.message });
   }
 }

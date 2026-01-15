@@ -24,25 +24,27 @@ interface ContentItemCreationAttributes extends Optional<ContentItemAttributes, 
 
 class ContentItem extends Model<ContentItemAttributes, ContentItemCreationAttributes>
   implements ContentItemAttributes {
-  public id!: number;
-  public title!: string;
-  public description?: string;
-  public contentUrl!: string;
-  public contentType!: "image" | "video" | "text" | "audio" | "document";
-  public status!: "pending" | "approved" | "rejected" | "needs_review" | "publish" | "draft";
-  public submittedBy!: number;
-  public assignedModerator?: number | null;
-  public reviewedBy?: number | null;
-  public reviewComments?: string | null;
-  public rejectionReason?: string | null;
-  public submittedAt!: Date;
-  public reviewedAt?: Date | null;
-  public publishedAt?: Date | null;
-  public priority!: "low" | "medium" | "high";
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  public declare id: number;
+  public declare title: string;
+  public declare description?: string;
+  public declare contentUrl: string;
+  public declare contentType: "image" | "video" | "text" | "audio" | "document";
+  public declare status: "pending" | "approved" | "rejected" | "needs_review" | "publish" | "draft";
+  public declare submittedBy: number;
+  public declare assignedModerator?: number | null;
+  public declare reviewedBy?: number | null;
+  public declare reviewComments?: string | null;
+  public declare rejectionReason?: string | null;
+  public declare submittedAt: Date;
+  public declare reviewedAt?: Date | null;
+  public declare publishedAt?: Date | null;
+  public declare priority: "low" | "medium" | "high";
+
+  public declare readonly createdAt: Date;
+  public declare readonly updatedAt: Date;
 }
+
 
 ContentItem.init(
   {

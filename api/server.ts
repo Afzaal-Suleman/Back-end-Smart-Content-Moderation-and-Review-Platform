@@ -8,100 +8,91 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';
 
-// Minimal Hello World GraphQL schema
-// const typeDefs = gql`
-//   type Query {
-//     hello: String
-//   }
-// `;
-
-// const resolvers = {
-//   Query: {
-//     hello: () => "Hello World from GraphQL!",
-//   },
-// };
 
 // Apollo Server instance (safe, no DB yet)
 const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  introspection: true,
-  csrfPrevention: false,
+    typeDefs,
+    resolvers,
+    introspection: true,
+    csrfPrevention: false,
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3001');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3001');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Handle preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-  // Lazy DB connection (if needed)
-  let sequelize: any = null;
-  try {
-    const { Sequelize } = await import('sequelize');
-    sequelize = new Sequelize( 
-            process.env.DATABASE_URL || '',
-    
-      {
-        // host: process.env.DB_HOST || 'localhost',
-        // dialect: 'postgres',
-        // logging: false,
-        // pool: { max: 5, min: 0, idle: 10000 },
-      }
-    );
-    await sequelize.authenticate();
-    await sequelize.sync();
-    console.log(' DB connected');
-  } catch (err: any) {
-    console.warn(' DB connection failed:', err.message);
-    // continue, do NOT crash
-  }
-
-  const { query, variables } = req.body;
-
-  if (!query) {
-    return res.status(400).json({
-      kind: 'single',
-      singleResult: {
-        errors: [
-          {
-            message: 'GraphQL operations must contain a non-empty `query` or a `persistedQuery` extension.',
-            code: 'BAD_REQUEST',
-          },
-        ],
-      },
-    });
-  }
-
-  // Decode JWT
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '').trim();
-  let user = null;
-
-  if (token && sequelize) {
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      // Lazy import model
-      const UserModule = await import('./models/User');
-      const User = UserModule.default;
-      user = await User.findByPk(decoded.id).catch(() => null);
-    } catch {
-      console.log('Invalid or expired token');
+    // Handle preflight request
+    if (req.method === 'OPTIONS') {
+        return res.status(204).end();
     }
-  }
+    // Lazy DB connection (if needed)
+    let sequelize: any = null;
+    try {
+        const { Sequelize } = await import('sequelize');
+        sequelize = new Sequelize(
+            process.env.DATABASE_URL || '',
 
-  try {
-    const result = await server.executeOperation(
-      { query, variables },
-      { contextValue: { user, token, sequelize } }
-    );
-    res.status(200).json(result);
-  } catch (err: any) {
-    console.error('GraphQL execution error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
+            {
+                // host: process.env.DB_HOST || 'localhost',
+                // dialect: 'postgres',
+                // logging: false,
+                // pool: { max: 5, min: 0, idle: 10000 },
+            }
+        );
+        await sequelize.authenticate();
+        await sequelize.sync();
+        console.log(' DB connected');
+    } catch (err: any) {
+        console.warn(' DB connection failed:', err.message);
+        // continue, do NOT crash
+    }
+
+    const { query, variables } = req.body;
+
+    if (!query) {
+        return res.status(400).json({
+            kind: 'single',
+            singleResult: {
+                errors: [
+                    {
+                        message: 'GraphQL operations must contain a non-empty `query` or a `persistedQuery` extension.',
+                        code: 'BAD_REQUEST',
+                    },
+                ],
+            },
+        });
+    }
+
+    // Decode JWT
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    let user = null;
+
+    if (token && sequelize) {
+        try {
+            const decoded: any = jwt.verify(token, JWT_SECRET);
+            // Lazy import model
+            const UserModule = await import('./models/User.js');
+            const User = UserModule.default;
+            user = await User.findByPk(decoded.id).catch(() => null);
+        } catch {
+            console.log('Invalid or expired token');
+        }
+    }
+
+    try {
+        const result: any = await server.executeOperation(
+            { query, variables },
+            { contextValue: { user, token, sequelize } }
+        );
+
+        // Send only the GraphQL result
+        res.status(200).json(result.body.singleResult);
+    } catch (err: any) {
+        console.error('GraphQL execution error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+
 }

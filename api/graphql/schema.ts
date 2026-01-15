@@ -1,7 +1,7 @@
 import { gql } from "graphql-tag";
 
 export const typeDefs = gql` 
-  
+
   type Query {
     users: [User!]!
   }
@@ -114,21 +114,3 @@ type Query {
   approvedContent: [ContentItem!]!
 }
 `;
-
-//  type Mutation {
-//     createContact(phoneNumber: String!, address: String): Contact!
-//     deleteContact(id: ID!): Boolean!
-//     updateContact(id: ID!, phoneNumber: String, address: String): Contact!
-//     updateContactFull(id: ID!, phoneNumber: String!, address: String!): Contact!
-//   }
-
-
-  // type Contact {
-  //   id: ID!
-  //   phoneNumber: String!
-  //   address: String
-  // }
-
-  // extend type Query {
-  //   contact: [Contact!]!
-  // }

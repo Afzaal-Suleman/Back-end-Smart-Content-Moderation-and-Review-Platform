@@ -36,9 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { Sequelize } = await import('sequelize');
     sequelize = new Sequelize(
-      process.env.DB_NAME || 'mydb',
-      process.env.DB_USER || 'postgres',
-      process.env.DB_PASSWORD || 'admin',
+      process.env.DATABASE_URL || "",
       {
         host: process.env.DB_HOST || 'localhost',
         dialect: 'postgres',

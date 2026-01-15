@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional } from "sequelize";
 import {sequelize} from "../config/database.js";
-import User from "./User";
+import User from "./User.js";
 
 interface ContentItemAttributes {
   id: number;

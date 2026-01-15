@@ -16,9 +16,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_here';
 // Connect to database
 connectDB();
 
-// Optional: sync DB manually (avoid in serverless)
-sequelize.sync().catch((err) => console.error('DB sync error:', err));
-
 const server = new ApolloServer({
   typeDefs,
   resolvers,

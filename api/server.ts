@@ -1,5 +1,4 @@
 import { ApolloServer } from '@apollo/server';
-import { gql } from 'graphql-tag';
 import jwt from 'jsonwebtoken';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import dotenv from 'dotenv';
@@ -31,25 +30,34 @@ const server = new ApolloServer({
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3001');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
   // Lazy DB connection (if needed)
   let sequelize: any = null;
   try {
     const { Sequelize } = await import('sequelize');
-    sequelize = new Sequelize(
-      process.env.DB_NAME || 'mydb',
-      process.env.DB_USER || 'postgres',
-      process.env.DB_PASSWORD || 'admin',
+    sequelize = new Sequelize( 
+            process.env.DATABASE_URL || '',
+    
       {
-        host: process.env.DB_HOST || 'localhost',
-        dialect: 'postgres',
-        logging: false,
-        pool: { max: 5, min: 0, idle: 10000 },
+        // host: process.env.DB_HOST || 'localhost',
+        // dialect: 'postgres',
+        // logging: false,
+        // pool: { max: 5, min: 0, idle: 10000 },
       }
     );
     await sequelize.authenticate();
-    console.log('✅ DB connected');
+    await sequelize.sync();
+    console.log(' DB connected');
   } catch (err: any) {
-    console.warn('⚠️ DB connection failed:', err.message);
+    console.warn(' DB connection failed:', err.message);
     // continue, do NOT crash
   }
 

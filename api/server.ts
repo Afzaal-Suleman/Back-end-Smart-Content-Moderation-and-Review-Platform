@@ -29,7 +29,7 @@ async function ensureStarted() {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", "https://smart-content-moderation-and-review.vercel.app/add-content");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 

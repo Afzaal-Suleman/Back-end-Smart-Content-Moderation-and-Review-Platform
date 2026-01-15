@@ -1,22 +1,15 @@
-import { Sequelize } from "sequelize";
+// config/database.js
+import { Sequelize } from 'sequelize';
+const sequelize = new Sequelize(process.env.DATABASE_URL || '');
 
-const sequelize = new Sequelize(process.env.DATABASE_URL || "", {
-  // host: process.env.DB_HOST || "localhost",
-  logging: false,
-  pool: {
-    max: 5,
-    min: 0,
-    idle: 10000,
-  },
-});
-
-export const connectDB = async () => {
+const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log(" PostgreSQL connected successfully");
-  } catch (error: any) {
-    console.error("⚠️ DB connection failed:", error.message);
+    console.log('DB connected');
+  } catch (err) {
+    console.error('DB connection failed:', err);
   }
 };
 
-export default sequelize;
+export default connectDB;
+export { sequelize };

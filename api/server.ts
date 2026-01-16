@@ -18,6 +18,25 @@ const server = new ApolloServer({
 });
 
 let serverStarted = false;
+let dbConnected = false;
+
+// ✅ Initialize database connection ONCE
+async function initializeDatabase() {
+  if (!dbConnected) {
+    try {
+      await sequelize.authenticate();
+      console.log("✅ Database connected successfully");
+      dbConnected = true;
+      
+      // Optional: Sync models (remove in production)
+      // await sequelize.sync({ alter: true });
+    } catch (err: any) {
+      console.error("❌ Database connection failed:", err.message);
+      throw err;
+    }
+  }
+}
+
 async function ensureStarted() {
   if (!serverStarted) {
     await server.start();
@@ -55,13 +74,15 @@ export default async function handler(
       .json({ errors: [{ message: "No GraphQL query provided" }] });
   }
 
-  // ✅ DB connection
+  // ✅ Ensure database is connected
   try {
-    // await sequelize.authenticate();
-    console.log("✅ Database connected");
+    await initializeDatabase();
   } catch (err: any) {
-    console.error("❌ DB connection failed:", err.message);
-    return res.status(500).json({ error: "Database connection failed" });
+    console.error("❌ DB initialization failed:", err.message);
+    return res.status(500).json({ 
+      error: "Database connection failed",
+      details: err.message 
+    });
   }
 
   // ✅ JWT parsing

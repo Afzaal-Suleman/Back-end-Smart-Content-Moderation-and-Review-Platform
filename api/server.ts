@@ -57,7 +57,7 @@ export default async function handler(
 
   // ✅ DB connection
   try {
-    await sequelize.authenticate();
+    // await sequelize.authenticate();
     console.log("✅ Database connected");
   } catch (err: any) {
     console.error("❌ DB connection failed:", err.message);
